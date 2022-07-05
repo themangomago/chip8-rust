@@ -1,11 +1,12 @@
 use super::Disk;
+use rand::Rng;
 
 #[cfg(test)]
 #[path = "./tests/cpu.rs"]
 mod tests;
 
-const CPU_DEBUG_PRINT: bool = false;
-const CPU_DEBUG_PRINT_VIDEO_RAM: bool = true;
+const CPU_DEBUG_PRINT: bool = true;
+const CPU_DEBUG_PRINT_VIDEO_RAM: bool = false;
 
 const FONT_SET: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -123,17 +124,17 @@ impl Cpu {
                 0x0001 => self.op_0x8xy1(),
                 0x0002 => self.op_0x8xy2(),
                 0x0003 => self.op_0x8xy3(),
-                //     0x0004 => self.op_0x8xy4(),
-                //     0x0005 => self.op_0x8xy5(),
-                //     0x0006 => self.op_0x8xy6(),
-                //     0x0007 => self.op_0x8xy7(),
-                //     0x000E => self.op_0x8xyE(),
+                0x0004 => self.op_0x8xy4(),
+                0x0005 => self.op_0x8xy5(),
+                0x0006 => self.op_0x8xy6(),
+                0x0007 => self.op_0x8xy7(),
+                0x000E => self.op_0x8xyE(),
                 _ => println!("Unknown opcode: {:04x}", self.opcode),
             },
-            // 0x9000 => self.op_0x9xy0(),
+            0x9000 => self.op_0x9xy0(),
             0xA000 => self.op_0xAnnn(),
-            // 0xB000 => self.op_0xBnnn(),
-            // 0xC000 => self.op_0xCxkk(),
+            0xB000 => self.op_0xBnnn(),
+            0xC000 => self.op_0xCxkk(),
             0xD000 => self.op_0xDxyn(),
             // 0xE000 => match self.opcode & 0x000F {
             //     0x000E => self.op_0xEx9E(),
@@ -248,9 +249,81 @@ impl Cpu {
         debug_print(self.opcode);
     }
 
+    // Set Vx = Vx + Vy, set VF = carry
+    fn op_0x8xy4(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        let reg_y = ((self.opcode & 0x00F0) >> 4) as usize;
+
+        let (result, carry) = self.reg_v[reg_x].overflowing_add(self.reg_v[reg_y]);
+        self.reg_v[reg_x] = result;
+        self.reg_v[0xF] = if carry { 1 } else { 0 };
+
+        debug_print(self.opcode);
+    }
+
+    // Set Vx = Vx - Vy, set VF = NOT borrow
+    fn op_0x8xy5(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        let reg_y = ((self.opcode & 0x00F0) >> 4) as usize;
+        let (result, borrow) = self.reg_v[reg_x].overflowing_sub(self.reg_v[reg_y]);
+        self.reg_v[reg_x] = result;
+        self.reg_v[0xF] = if borrow { 0 } else { 1 };
+        debug_print(self.opcode);
+    }
+
+    // Set Vx = Vx SHIFT RIGHT 1, set VF = least significant bit of Vx before shift
+    fn op_0x8xy6(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        self.reg_v[0xF] = self.reg_v[reg_x] & 0x1;
+        self.reg_v[reg_x] = self.reg_v[reg_x] >> 1;
+        debug_print(self.opcode);
+    }
+
+    // Set Vx = Vy - Vx, set VF = NOT borrow
+    fn op_0x8xy7(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        let reg_y = ((self.opcode & 0x00F0) >> 4) as usize;
+        let (result, borrow) = self.reg_v[reg_y].overflowing_sub(self.reg_v[reg_x]);
+        self.reg_v[reg_x] = result;
+        self.reg_v[0xF] = if borrow { 0 } else { 1 };
+        debug_print(self.opcode);
+    }
+
+    // Set Vx = Vx SHIFT LEFT 1, set VF = most significant bit of Vx before shift
+    fn op_0x8xyE(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        self.reg_v[0xF] = (self.reg_v[reg_x] & 0x80) >> 7;
+        self.reg_v[reg_x] = self.reg_v[reg_x] << 1;
+        debug_print(self.opcode);
+    }
+
+    // Skips the next instruction if VX does not equal VY
+    fn op_0x9xy0(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        let reg_y = ((self.opcode & 0x00F0) >> 4) as usize;
+        if self.reg_v[reg_x] != self.reg_v[reg_y] {
+            self.reg_pc += 2;
+        }
+        debug_print(self.opcode);
+    }
+
     // Sets I to the address NNN.
     fn op_0xAnnn(&mut self) {
         self.reg_i = self.opcode & 0x0FFF;
+        debug_print(self.opcode);
+    }
+
+    // Jumps to address NNN plus V0.
+    fn op_0xBnnn(&mut self) {
+        self.reg_pc = (self.opcode & 0x0FFF) + self.reg_v[0] as u16;
+        debug_print(self.opcode);
+    }
+
+    // Sets Vx = random byte AND kk.
+    fn op_0xCxkk(&mut self) {
+        let mut rng = rand::thread_rng();
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        self.reg_v[reg_x] = rng.gen_range(0..0xFF) & (self.opcode & 0x00FF) as u8;
         debug_print(self.opcode);
     }
 

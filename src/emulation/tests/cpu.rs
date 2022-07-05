@@ -210,6 +210,138 @@ mod tests {
         assert_eq!(cpu.reg_v[1], 2);
     }
 
+    // Test Opcode 0x8XY4
+    #[test]
+    fn cpu_0x8XY4() {
+        let mut cpu = get_cpu_with_opcode(0x8124);
+
+        // No overflow
+        cpu.reg_v[1] = 1; // vx
+        cpu.reg_v[2] = 3; // vy
+        cpu.execute();
+        assert_eq!(cpu.reg_v[1], 4);
+        assert_eq!(cpu.reg_v[15], 0);
+
+        // Overflow
+        cpu.reg_v[1] = 0xFF; // vx
+        cpu.reg_v[2] = 1; // vy
+        cpu.execute();
+        assert_eq!(cpu.reg_v[1], 0);
+        assert_eq!(cpu.reg_v[15], 1);
+    }
+
+    // Test Opcode 0x8XY5
+    #[test]
+    fn cpu_0x8XY5() {
+        let mut cpu = get_cpu_with_opcode(0x8125);
+
+        // No borrow
+        cpu.reg_v[1] = 1; // vx
+        cpu.reg_v[2] = 2; // vy
+        cpu.execute();
+        assert_eq!(cpu.reg_v[1], 0xFF);
+        assert_eq!(cpu.reg_v[15], 0);
+
+        // Borrow
+        cpu.reg_v[1] = 2; // vx
+        cpu.reg_v[2] = 1; // vy
+        cpu.execute();
+        assert_eq!(cpu.reg_v[1], 1);
+        assert_eq!(cpu.reg_v[15], 1);
+    }
+
+    // Test Opcode 0x8XY6
+    #[test]
+    fn cpu_0x8XY6() {
+        let mut cpu = get_cpu_with_opcode(0x8106);
+
+        // Even LSB
+        cpu.reg_v[1] = 4; // vx
+        cpu.execute();
+        assert_eq!(cpu.reg_v[1], 2);
+        assert_eq!(cpu.reg_v[15], 0);
+
+        // Uneven LSB
+        cpu.reg_v[1] = 5; // vx
+        cpu.execute();
+        assert_eq!(cpu.reg_v[1], 2);
+        assert_eq!(cpu.reg_v[15], 1);
+    }
+
+    // Test Opcode 0x8XY7
+    #[test]
+    fn cpu_0x8XY7() {
+        let mut cpu = get_cpu_with_opcode(0x8127);
+        // Vx = Vy - Vx
+        cpu.reg_v[1] = 1; // vx
+        cpu.reg_v[2] = 0x0F; // vy
+        cpu.execute();
+        assert_eq!(cpu.reg_v[1], 0x0E);
+        assert_eq!(cpu.reg_v[15], 1);
+
+        cpu.reg_v[1] = 0xFF; // vx
+        cpu.reg_v[2] = 0x0F; // vy
+        cpu.execute();
+        assert_eq!(cpu.reg_v[1], 0x10);
+        assert_eq!(cpu.reg_v[15], 0);
+    }
+
+    // Test Opcode 0x8XYE
+    #[test]
+    fn cpu_0x8XYE() {
+        let mut cpu = get_cpu_with_opcode(0x812E);
+
+        cpu.reg_v[1] = 0xC0; // vx
+        cpu.execute();
+        assert_eq!(cpu.reg_v[1], 0x80);
+        assert_eq!(cpu.reg_v[15], 1);
+    }
+
+    // Test Opcode 0x9XY0
+    #[test]
+    fn cpu_0x9xy0() {
+        let mut cpu = get_cpu_with_opcode(0x9120);
+
+        // Jump
+        cpu.reg_pc = 0;
+        cpu.reg_v[1] = 1; // vx
+        cpu.reg_v[2] = 2; // vy
+        cpu.execute();
+        assert_eq!(cpu.reg_pc, 2);
+
+        // Don't jump
+        cpu.reg_pc = 0;
+        cpu.reg_v[1] = 1; // vx
+        cpu.reg_v[2] = 1; // vy
+        cpu.execute();
+        assert_eq!(cpu.reg_pc, 0);
+    }
+
+    // Test Opcode 0xANNN
+    #[test]
+    fn cpu_0xAnnn() {
+        let mut cpu = get_cpu_with_opcode(0xA123);
+        cpu.execute();
+        assert_eq!(cpu.reg_i, 0x123);
+    }
+
+    // Test Opcode 0xBNNN
+    #[test]
+    fn cpu_0xBnnn() {
+        let mut cpu = get_cpu_with_opcode(0xB123);
+        cpu.reg_v[0] = 1; // vx
+        cpu.execute();
+        assert_eq!(cpu.reg_pc, 0x124);
+    }
+
+    // Test Opcode 0xCXNN
+    #[test]
+    fn cpu_0xCxnn() {
+        let mut cpu = get_cpu_with_opcode(0xC1FF);
+        cpu.execute();
+        println!("Random Value {:X}", cpu.reg_v[1]);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////
