@@ -36,8 +36,13 @@ fn main() {
     cpu.load_disk_to_ram(&disk);
 
     while let Some(e) = display.window.next() {
+        // Handle input
+        //TODO: Handle input
+
         // Handle cpu
         cpu.next();
+
+        // Handle display
         display.draw(&cpu, &e);
     }
 }
