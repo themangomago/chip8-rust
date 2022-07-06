@@ -46,6 +46,8 @@ pub struct Cpu {
     // Timers
     pub reg_delay_timer: u8,
     pub reg_sound_timer: u8,
+    // Keyboard
+    pub keyboard: [bool; 16],
 }
 
 impl Cpu {
@@ -69,6 +71,8 @@ impl Cpu {
             // Timers
             reg_delay_timer: 0,
             reg_sound_timer: 0,
+            // Keyboard
+            keyboard: [false; 16],
         };
 
         cpu.reg_pc = 0x200;
@@ -99,6 +103,10 @@ impl Cpu {
             | self.ram[(self.reg_pc + 1) as usize] as u16;
         self.reg_pc += 2;
         self.execute();
+
+        if self.reg_delay_timer > 0 {
+            self.reg_delay_timer = self.reg_delay_timer - 1;
+        }
     }
 
     fn execute(&mut self) {
@@ -129,18 +137,30 @@ impl Cpu {
                 0x0006 => self.op_0x8xy6(),
                 0x0007 => self.op_0x8xy7(),
                 0x000E => self.op_0x8xyE(),
-                _ => println!("Unknown opcode: {:04x}", self.opcode),
+                _ => println!("0x8000 Unknown opcode: {:04x}", self.opcode),
             },
             0x9000 => self.op_0x9xy0(),
             0xA000 => self.op_0xAnnn(),
             0xB000 => self.op_0xBnnn(),
             0xC000 => self.op_0xCxkk(),
             0xD000 => self.op_0xDxyn(),
-            // 0xE000 => match self.opcode & 0x000F {
-            //     0x000E => self.op_0xEx9E(),
-            //     0x000A => self.op_0xExA1(),
-            //     _ => println!("Unknown opcode: {:04x}", self.opcode),
-            // },
+            0xE000 => match self.opcode & 0x000F {
+                0x000E => self.op_0xEx9E(),
+                0x0001 => self.op_0xExA1(),
+                _ => println!("0xE000 Unknown opcode: {:04x}", self.opcode),
+            },
+            0xF000 => match self.opcode & 0x00FF {
+                0x0007 => self.op_0xFx07(),
+                0x000A => self.op_0xFx0A(),
+                0x0015 => self.op_0xFx15(),
+                0x0018 => self.op_0xFx18(),
+                0x001E => self.op_0xFx1E(),
+                0x0029 => self.op_0xFx29(),
+                0x0033 => self.op_0xFx33(),
+                0x0055 => self.op_0xFx55(),
+                0x0065 => self.op_0xFx65(),
+                _ => println!("0xF000 Unknown opcode: {:04x}", self.opcode),
+            },
             _ => println!("Unknown opcode: {:04x}", self.opcode),
         }
     }
@@ -153,6 +173,7 @@ impl Cpu {
             }
         }
         self.video_ram_changed = true;
+        println!("cleared");
         debug_print(self.opcode);
     }
 
@@ -350,6 +371,102 @@ impl Cpu {
         //TODO: implement this
         debug_print(self.opcode);
         debug_print_video_ram(&self.video_ram);
+    }
+
+    // Skips the next instruction if the key stored in VX is pressed.
+    fn op_0xEx9E(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        if self.keyboard[self.reg_v[reg_x] as usize] == true {
+            self.reg_pc += 2;
+        }
+        debug_print(self.opcode);
+    }
+
+    // Skips the next instruction if the key stored in VX is not pressed.
+    fn op_0xExA1(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        if self.keyboard[self.reg_v[reg_x] as usize] == false {
+            self.reg_pc += 2;
+        }
+        debug_print(self.opcode);
+    }
+
+    // Sets Vx = delay timer value.
+    fn op_0xFx07(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        self.reg_v[reg_x] = self.reg_delay_timer;
+        debug_print(self.opcode);
+    }
+
+    // Awaits a key press, then stores the value of the key in VX.
+    fn op_0xFx0A(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        let mut key_pressed = false;
+        for i in 0..16 {
+            if self.keyboard[i] == true {
+                self.reg_v[reg_x] = i as u8;
+                key_pressed = true;
+            }
+        }
+        if !key_pressed {
+            self.reg_pc -= 2;
+        }
+        debug_print(self.opcode);
+    }
+
+    // Sets the delay timer = Vx.
+    fn op_0xFx15(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        self.reg_delay_timer = self.reg_v[reg_x];
+        debug_print(self.opcode);
+    }
+
+    // Sets the sound timer = Vx.
+    fn op_0xFx18(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        self.reg_sound_timer = self.reg_v[reg_x];
+        debug_print(self.opcode);
+    }
+
+    // Adds Vx to I.
+    fn op_0xFx1E(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        self.reg_i += self.reg_v[reg_x] as u16;
+        debug_print(self.opcode);
+    }
+
+    // Sets I = location of sprite for digit Vx.
+    fn op_0xFx29(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        self.reg_i = self.reg_v[reg_x] as u16 * 5;
+        debug_print(self.opcode);
+    }
+
+    // Stores BCD representation of Vx in memory locations I, I+1, and I+2.
+    fn op_0xFx33(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        self.ram[self.reg_i as usize] = self.reg_v[reg_x] / 100;
+        self.ram[self.reg_i as usize + 1] = (self.reg_v[reg_x] % 100) / 10;
+        self.ram[self.reg_i as usize + 2] = self.reg_v[reg_x] % 10;
+        debug_print(self.opcode);
+    }
+
+    // Stores registers V0 to Vx in memory starting at location I.
+    fn op_0xFx55(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        for i in 0..reg_x + 1 {
+            self.ram[self.reg_i as usize + i] = self.reg_v[i];
+        }
+        debug_print(self.opcode);
+    }
+
+    // Fills registers V0 to Vx with values from memory starting at location I.
+    fn op_0xFx65(&mut self) {
+        let reg_x = ((self.opcode & 0x0F00) >> 8) as usize;
+        for i in 0..reg_x + 1 {
+            self.reg_v[i] = self.ram[self.reg_i as usize + i];
+        }
+        debug_print(self.opcode);
     }
 }
 

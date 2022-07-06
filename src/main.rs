@@ -29,7 +29,7 @@ fn main() {
         "Chip8 Emulator",
     );
 
-    let disk = emulation::Disk::new("roms/IBM_Logo.ch8");
+    let disk = emulation::Disk::new("roms/Maze_[David Winter, 199x].ch8");
     disk.print_disk();
 
     let mut cpu = emulation::Cpu::new();
@@ -38,12 +38,6 @@ fn main() {
     while let Some(e) = display.window.next() {
         // Handle cpu
         cpu.next();
-
-        // Handle graphics
-
-        display.window.draw_2d(&e, |c, g, _d| {
-            clear(BACKCOLOR, g);
-            rectangle(FRONTCOLOR, [0.0, 0.0, 24.0, 24.0], c.transform, g);
-        });
+        display.draw(&cpu, &e);
     }
 }

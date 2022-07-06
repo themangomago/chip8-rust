@@ -342,6 +342,157 @@ mod tests {
         println!("Random Value {:X}", cpu.reg_v[1]);
     }
 
+    // Test Opcode 0xDXYN
+    #[test]
+    fn cpu_0xDxyn() {
+        println!("No test case avaialble for Opcode 0xDXYN");
+    }
+
+    // Test Opcode 0xEX9E
+    #[test]
+    fn cpu_0xEx9e() {
+        let mut cpu = get_cpu_with_opcode(0xE19E);
+        cpu.reg_v[1] = 1; // vx
+        cpu.keyboard[1] = true; // key
+
+        // Pressed
+        cpu.reg_pc = 0;
+        cpu.execute();
+        assert_eq!(cpu.reg_pc, 2);
+
+        // Not pressed
+        cpu.reg_pc = 0;
+        cpu.keyboard[1] = false;
+        cpu.execute();
+        assert_eq!(cpu.reg_pc, 0);
+    }
+
+    // Test Opcode 0xEXA1
+    #[test]
+    fn cpu_0xExa1() {
+        let mut cpu = get_cpu_with_opcode(0xE1A1);
+        cpu.reg_v[1] = 1; // vx
+        cpu.keyboard[1] = true; // key
+
+        // Pressed
+        cpu.reg_pc = 0;
+        cpu.execute();
+        assert_eq!(cpu.reg_pc, 0);
+
+        // Not pressed
+        cpu.reg_pc = 0;
+        cpu.keyboard[1] = false;
+        cpu.execute();
+        assert_eq!(cpu.reg_pc, 2);
+    }
+
+    // Test Opcode 0xFX07
+    #[test]
+    fn cpu_0xFx07() {
+        let mut cpu = get_cpu_with_opcode(0xF107);
+        cpu.reg_delay_timer = 0x20;
+        cpu.execute();
+        assert_eq!(cpu.reg_v[1], 0x20);
+    }
+
+    // Test Opcode 0xFX0A
+    #[test]
+    fn cpu_0xFx0a() {
+        let mut cpu = get_cpu_with_opcode(0xF10A);
+
+        // Not pressed -> PC -= 2
+        cpu.reg_pc = 2;
+        cpu.reg_v[1] = 1; // vx
+        cpu.keyboard[1] = false; // key
+        cpu.execute();
+        assert_eq!(cpu.reg_pc, 0);
+
+        // Pressed -> PC == 2
+        cpu.keyboard[1] = true; // key
+        cpu.reg_pc = 2;
+        cpu.execute();
+        assert_eq!(cpu.reg_pc, 2);
+    }
+
+    // Test Opcode 0xFX15
+    #[test]
+    fn cpu_0xFx15() {
+        let mut cpu = get_cpu_with_opcode(0xF115);
+        cpu.reg_delay_timer = 0;
+        cpu.reg_v[1] = 0x20; // vx
+        cpu.execute();
+        assert_eq!(cpu.reg_delay_timer, 0x20);
+    }
+
+    // Test Opcode 0xFX18
+    #[test]
+    fn cpu_0xFx18() {
+        let mut cpu = get_cpu_with_opcode(0xF118);
+        cpu.reg_sound_timer = 0;
+        cpu.reg_v[1] = 0x20; // vx
+        cpu.execute();
+        assert_eq!(cpu.reg_sound_timer, 0x20);
+    }
+
+    // Test Opcode 0xFX1E
+    #[test]
+    fn cpu_0xFx1e() {
+        let mut cpu = get_cpu_with_opcode(0xF11E);
+        cpu.reg_i = 0x123;
+        cpu.reg_v[1] = 0x20; // vx
+        cpu.execute();
+        assert_eq!(cpu.reg_i, 0x123 + 0x20);
+    }
+
+    // Test Opcode 0xFX29
+    #[test]
+    fn cpu_0xFx29() {
+        let mut cpu = get_cpu_with_opcode(0xF129);
+        cpu.reg_v[1] = 1; // vx
+        cpu.execute();
+        assert_eq!(cpu.reg_i, 5);
+    }
+
+    // Test Opcode 0xFX33
+    #[test]
+    fn cpu_0xFx33() {
+        let mut cpu = get_cpu_with_opcode(0xF133);
+        cpu.reg_v[1] = 123; // vx
+        cpu.execute();
+        assert_eq!(cpu.ram[cpu.reg_i as usize], 1);
+        assert_eq!(cpu.ram[cpu.reg_i as usize + 1], 2);
+        assert_eq!(cpu.ram[cpu.reg_i as usize + 2], 3);
+    }
+
+    // Test Opcode 0xFX55
+    #[test]
+    fn cpu_0xFx55() {
+        let mut cpu = get_cpu_with_opcode(0xF255);
+        cpu.reg_v[0] = 0x12; // vx
+        cpu.reg_v[1] = 0x34; // vy
+        cpu.reg_v[2] = 0x56; // vz
+        cpu.execute();
+        assert_eq!(cpu.ram[cpu.reg_i as usize], 0x12);
+        assert_eq!(cpu.ram[cpu.reg_i as usize + 1], 0x34);
+        assert_eq!(cpu.ram[cpu.reg_i as usize + 2], 0x56);
+    }
+
+    // Test Opcode 0xFX65
+    #[test]
+    fn cpu_0xFx65() {
+        let mut cpu = get_cpu_with_opcode(0xF265);
+        cpu.reg_v[0] = 0; // vx
+        cpu.reg_v[1] = 0; // vy
+        cpu.reg_v[2] = 0; // vz
+        cpu.ram[cpu.reg_i as usize] = 0x12;
+        cpu.ram[cpu.reg_i as usize + 1] = 0x34;
+        cpu.ram[cpu.reg_i as usize + 2] = 0x56;
+        cpu.execute();
+        assert_eq!(cpu.reg_v[0], 0x12);
+        assert_eq!(cpu.reg_v[1], 0x34);
+        assert_eq!(cpu.reg_v[2], 0x56);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////
