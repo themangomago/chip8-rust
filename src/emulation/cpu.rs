@@ -91,6 +91,11 @@ impl Cpu {
         println!("Loaded {} bytes to RAM", disk.size);
     }
 
+    pub fn key_pressed(&mut self, key: u8) {
+        self.keyboard[key as usize - 1] = true;
+        println!("Key pressed: {}", key);
+    }
+
     pub fn next(&mut self) {
         self.opcode_last = self.opcode;
 
@@ -99,13 +104,19 @@ impl Cpu {
             return;
         }
 
+        // Run opcode
         self.opcode = (self.ram[self.reg_pc as usize] as u16) << 8
             | self.ram[(self.reg_pc + 1) as usize] as u16;
         self.reg_pc += 2;
         self.execute();
 
+        // Handle timers
         if self.reg_delay_timer > 0 {
             self.reg_delay_timer = self.reg_delay_timer - 1;
+        }
+
+        if self.reg_sound_timer > 0 {
+            self.reg_sound_timer = self.reg_sound_timer - 1;
         }
     }
 

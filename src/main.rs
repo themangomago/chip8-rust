@@ -1,3 +1,4 @@
+use emulation::handle_input;
 use piston_window::{types::Color, *};
 
 mod emulation;
@@ -29,7 +30,7 @@ fn main() {
         "Chip8 Emulator",
     );
 
-    let disk = emulation::Disk::new("roms/Maze_[David Winter, 199x].ch8");
+    let disk = emulation::Disk::new("roms/Chip8_Logo.ch8");
     disk.print_disk();
 
     let mut cpu = emulation::Cpu::new();
@@ -37,7 +38,9 @@ fn main() {
 
     while let Some(e) = display.window.next() {
         // Handle input
-        //TODO: Handle input
+        if let Some(Button::Keyboard(key)) = e.press_args() {
+            handle_input(&mut cpu, key);
+        }
 
         // Handle cpu
         cpu.next();
